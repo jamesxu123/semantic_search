@@ -3,10 +3,12 @@ from pypdf import PdfReader
 import json
 from whoosh.index import create_in, open_dir
 from whoosh.fields import *
-from whoosh.qparser import QueryParser
+from whoosh.qparser import QueryParser, OrGroup
+from whoosh.analysis import StemmingAnalyzer
+from glob import glob
 
 
-schema = Schema(path=ID(stored=True), content=TEXT)
+schema = Schema(path=ID(stored=True), content=TEXT(StemmingAnalyzer()))
 INDEX_DIR = "whoosh_index"
 
 def read_text_from_pdf(path):
@@ -47,7 +49,7 @@ class SearchResult:
 
 def search_by_term(INDEX_DIR, term):
     ix = get_whoosh_ix(INDEX_DIR)
-    qp = QueryParser("content", schema=ix.schema)
+    qp = QueryParser("content", schema=ix.schema, group=OrGroup)
     q = qp.parse(term)
     search_results = []
     with ix.searcher() as searcher:
