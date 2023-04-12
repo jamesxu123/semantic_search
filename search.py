@@ -1,6 +1,6 @@
 import torch
 from annoy import AnnoyIndex
-from lib import extract_conversations
+from lib import extract_conversations, search_by_term, INDEX_DIR
 from glob import glob
 import json
 from sentence_transformers import SentenceTransformer
@@ -11,27 +11,14 @@ cross_enc_model = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2', max_lengt
 
 device = torch.device("mps")
 t = AnnoyIndex(768, 'dot') # dot is better for long-form
-# # model_ckpt = "sentence-transformers/multi-qa-mpnet-base-dot-v1"
 
-
-# model_ckpt = "sentence-transformers/msmarco-distilbert-base-tas-b"
 model = SentenceTransformer("msmarco-distilbert-base-tas-b")
-# tokenizer = AutoTokenizer.from_pretrained(model_ckpt)
-# model = AutoModel.from_pretrained(model_ckpt).to(device)
 
 
 def cls_pooling(model_output):
     return model_output.last_hidden_state[:, 0]
 
 annoy_filename = "msmarco_dot_additional.ann"
-
-
-# def get_embeddings(text_list):
-#     encoded_input = tokenizer(text_list, padding=True, truncation=True, return_tensors="pt").to(device)
-#     encoded_input = {k: v for k, v in encoded_input.items()}
-#     model_output = model(**encoded_input)
-#     return cls_pooling(model_output)
-
 
 def build():
     print("[Starting processing]")
@@ -76,6 +63,10 @@ if __name__ == '__main__':
                 txt = extract_conversations(db[str(i)]['path'])[0]
                 text.append(txt)
                 contents.append((query, txt))
+            full_text_search = search_by_term(INDEX_DIR, query)
+            for result in full_text_search:
+                text.append(result.content)
+                print("FULL TEXT", result.path)
             scores = cross_enc_model.predict(contents)
             reranked = sorted(zip(scores, text), key=lambda x: x[0], reverse=True)
             for entry in map(operator.itemgetter(1), reranked[:2]):
