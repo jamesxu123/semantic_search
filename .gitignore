@@ -1,0 +1,6 @@
+data
+.idea
+**pycache**
+db.txt
+*.ann
+**.DS_Store
